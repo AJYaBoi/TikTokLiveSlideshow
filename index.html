@@ -1,1 +1,64 @@
 
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Auto Slideshow</title>
+<style>
+    body, html { margin: 0; padding: 0; background: black; overflow: hidden; }
+    #slider { position: fixed; top:0; left:0; width:100vw; height:100vh; }
+    .slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: opacity 1s ease-in-out;
+    }
+    .active { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="slider"></div>
+
+<script>
+// CHANGE THESE
+const user = "AJYaBoi";
+const repo = "TikTokLiveSlideshow";
+const folder = "images";
+
+// Fetch image list automatically from GitHub directory
+fetch(`https://api.github.com/repos/${user}/${repo}/contents/${folder}`)
+  .then(res => res.json())
+  .then(files => {
+      const imageFiles = files.filter(f => f.name.match(/\.(jpe?g|png|gif|webp)$/i));
+
+      const slider = document.getElementById("slider");
+
+      imageFiles.forEach((file, i) => {
+          const div = document.createElement("div");
+          div.className = "slide";
+          div.style.backgroundImage = `url(${file.download_url})`;
+          slider.appendChild(div);
+      });
+
+      startSlideshow();
+  });
+
+let current = 0;
+
+function startSlideshow() {
+    const slides = document.querySelectorAll(".slide");
+
+    if (!slides.length) return;
+
+    setInterval(() => {
+        slides.forEach(s => s.classList.remove("active"));
+        slides[current].classList.add("active");
+        current = (current + 1) % slides.length;
+    }, 4000);
+}
+</script>
+</body>
+</html>
