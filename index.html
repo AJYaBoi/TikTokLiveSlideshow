@@ -1,97 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Auto-Updating Slideshow</title>
 <style>
-    body, html { margin: 0; padding: 0; background: black; overflow: hidden; }
-    #slider { position: fixed; top:0; left:0; width:100vw; height:100vh; }
-    .slide {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        background-size: contain;
-        background-position: center;
-        background-repeat: no-repeat;
+    body {
+        margin: 0;
+        background: black;
+        overflow: hidden;
+    }
+    #slideshow {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
         transition: opacity 1s ease-in-out;
     }
-    .active { opacity: 1; }
+    #caption {
+        position: fixed;
+        bottom: 20px;
+        width: 100%;
+        text-align: center;
+        color: white;
+        font-size: 32px;
+        font-family: Arial, sans-serif;
+        text-shadow: 0 0 10px black;
+    }
 </style>
 </head>
 <body>
-<div id="slider"></div>
+
+<img id="slideshow" src="" style="opacity: 0;">
+<div id="caption"></div>
 
 <script>
-// -------------------------------------------
-// SET THESE TO YOUR INFO
-// -------------------------------------------
-const user = "AJYaBoi";
-const repo = "TikTokLiveSlideshow";
-const folder = "images";
+    const imageFolder = "images/"; // Your GitHub images folder
+    let images = [];
+    let current = 0;
 
-// Slide timing (7 seconds)
-const SLIDE_TIME = 7000;
+    async function fetchImages() {
+        // Gets updated file list directly from GitHub Pages
+        try {
+            let response = await fetch(imageFolder);
+            let text = await response.text();
+            
+            // Find any .jpg / .png / .gif in the directory listing
+            images = [...text.matchAll(/href="([^"]+\.(jpg|png|gif|jpeg))"/gi)]
+                     .map(m => m[1]);
 
-// How often to check GitHub for new images (30s)
-const REFRESH_TIME = 30000;
+            console.log("Images loaded:", images);
+        } catch (e) {
+            console.error("Error loading images:", e);
+        }
+    }
 
-// -------------------------------------------
+    function filenameWithoutExtension(path) {
+        return path.split('/').pop().replace(/\.[^/.]+$/, "");
+    }
 
-let current = 0;
-let imageList = [];
+    async function startSlideshow() {
+        await fetchImages();
+        if (images.length === 0) return;
 
-async function fetchImages() {
-    const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/${folder}`);
-    const files = await res.json();
+        setInterval(async () => {
+            await fetchImages(); // Auto-update every cycle
 
-    return files
-        .filter(f => f.name.match(/\.(jpe?g|png|gif|webp)$/i))
-        .map(f => f.download_url);
-}
+            const img = document.getElementById("slideshow");
+            const caption = document.getElementById("caption");
 
-function updateSlides(newList) {
-    const slider = document.getElementById("slider");
+            img.style.opacity = 0;
 
-    // If same images, do nothing
-    if (JSON.stringify(newList) === JSON.stringify(imageList)) return;
+            setTimeout(() => {
+                const file = images[current];
+                img.src = imageFolder + file;
 
-    imageList = newList;
+                caption.textContent = filenameWithoutExtension(file);
 
-    slider.innerHTML = ""; // Clear slides
+                img.style.opacity = 1;
 
-    imageList.forEach(src => {
-        const div = document.createElement("div");
-        div.className = "slide";
-        div.style.backgroundImage = `url(${src})`;
-        slider.appendChild(div);
-    });
+                current = (current + 1) % images.length;
+            }, 1000);
 
-    current = 0;
-}
+        }, 7000); // CHANGE SLIDE EVERY 7 SECONDS
+    }
 
-function startSlideshow() {
-    setInterval(() => {
-        const slides = document.querySelectorAll(".slide");
-        if (!slides.length) return;
-
-        slides.forEach(s => s.classList.remove("active"));
-        slides[current].classList.add("active");
-
-        current = (current + 1) % slides.length;
-    }, SLIDE_TIME);
-}
-
-async function refreshLoop() {
-    const newImages = await fetchImages();
-    updateSlides(newImages);
-}
-
-// Initial load
-refreshLoop().then(startSlideshow);
-
-// Auto-refresh image list
-setInterval(refreshLoop, REFRESH_TIME);
-
+    startSlideshow();
 </script>
+
 </body>
 </html>
