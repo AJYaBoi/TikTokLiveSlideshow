@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Auto-Updating Slideshow</title>
+<style>
+    body, html { margin: 0; padding: 0; background: black; overflow: hidden; }
+    #slider { position: fixed; top:0; left:0; width:100vw; height:100vh; }
+    .slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: opacity 1s ease-in-out;
+    }
+    .active { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="slider"></div>
+
+<script>
+// -------------------------------------------
+// SET THESE TO YOUR INFO
+// -------------------------------------------
+const user = "AJYaBoi";
+const repo = "TikTokLiveSlideshow";
+const folder = "images";
+
+// Slide timing (7 seconds)
+const SLIDE_TIME = 7000;
+
+// How often to check GitHub for new images (30s)
+const REFRESH_TIME = 30000;
+
+// -------------------------------------------
+
+let current = 0;
+let imageList = [];
+
+async function fetchImages() {
+    const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/${folder}`);
+    const files = await res.json();
+
+    return files
+        .filter(f => f.name.match(/\.(jpe?g|png|gif|webp)$/i))
+        .map(f => f.download_url);
+}
+
+function updateSlides(newList) {
+    const slider = document.getElementById("slider");
+
+    // If same images, do nothing
+    if (JSON.stringify(newList) === JSON.stringify(imageList)) return;
+
+    imageList = newList;
+
+    slider.innerHTML = ""; // Clear slides
+
+    imageList.forEach(src => {
+        const div = document.createElement("div");
+        div.className = "slide";
+        div.style.backgroundImage = `url(${src})`;
+        slider.appendChild(div);
+    });
+
+    current = 0;
+}
+
+function startSlideshow() {
+    setInterval(() => {
+        const slides = document.querySelectorAll(".slide");
+        if (!slides.length) return;
+
+        slides.forEach(s => s.classList.remove("active"));
+        slides[current].classList.add("active");
+
+        current = (current + 1) % slides.length;
+    }, SLIDE_TIME);
+}
+
+async function refreshLoop() {
+    const newImages = await fetchImages();
+    updateSlides(newImages);
+}
+
+// Initial load
+refreshLoop().then(startSlideshow);
+
+// Auto-refresh image list
+setInterval(refreshLoop, REFRESH_TIME);
+
+</script>
+</body>
+</html>
