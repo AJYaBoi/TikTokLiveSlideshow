@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Auto-Updating Slideshow</title>
+<title>Slideshow</title>
 <style>
     body {
         margin: 0;
@@ -31,58 +31,63 @@
 </head>
 <body>
 
-<img id="slideshow" src="" style="opacity: 0;">
+<img id="slideshow" style="opacity: 0;">
 <div id="caption"></div>
 
 <script>
-    const imageFolder = "images/"; // Your GitHub images folder
+    const owner = "AJYaBoi"; 
+    const repo = "TikTokLiveSlideshow";       
+    const folder = "images";             
+
     let images = [];
     let current = 0;
 
-    async function fetchImages() {
-        // Gets updated file list directly from GitHub Pages
-        try {
-            let response = await fetch(imageFolder);
-            let text = await response.text();
-            
-            // Find any .jpg / .png / .gif in the directory listing
-            images = [...text.matchAll(/href="([^"]+\.(jpg|png|gif|jpeg))"/gi)]
-                     .map(m => m[1]);
+    async function loadImages() {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${folder}?_=${Date.now()}`;
 
-            console.log("Images loaded:", images);
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            // Filter images and extract file names
+            images = data
+                .filter(item => item.type === "file" && /\.(png|jpg|jpeg|gif)$/i.test(item.name))
+                .map(item => item.download_url);
+
         } catch (e) {
             console.error("Error loading images:", e);
         }
     }
 
-    function filenameWithoutExtension(path) {
-        return path.split('/').pop().replace(/\.[^/.]+$/, "");
+    function filenameNoExt(url) {
+        const name = url.split("/").pop();
+        return name.replace(/\.[^/.]+$/, "");
     }
 
     async function startSlideshow() {
-        await fetchImages();
+        await loadImages();
         if (images.length === 0) return;
 
         setInterval(async () => {
-            await fetchImages(); // Auto-update every cycle
+            await loadImages(); // refresh image list live
 
             const img = document.getElementById("slideshow");
-            const caption = document.getElementById("caption");
+            const cap = document.getElementById("caption");
 
             img.style.opacity = 0;
 
             setTimeout(() => {
-                const file = images[current];
-                img.src = imageFolder + file;
+                const url = images[current];
 
-                caption.textContent = filenameWithoutExtension(file);
+                img.src = url;
+                cap.textContent = filenameNoExt(url);
 
                 img.style.opacity = 1;
 
                 current = (current + 1) % images.length;
             }, 1000);
 
-        }, 7000); // CHANGE SLIDE EVERY 7 SECONDS
+        }, 7000); // 7 seconds per slide
     }
 
     startSlideshow();
